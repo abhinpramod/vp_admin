@@ -12,7 +12,7 @@ const statsRoutes = require("./routes/stats.routes");
 const app = express();
 
 // -----------------------------------------------
-// ✅ CORS (Vercel-safe)
+// ✅ CORS (SAFE)
 // -----------------------------------------------
 const ALLOWED_ORIGINS = [
   "https://admin-inky-mu-29.vercel.app",
@@ -33,10 +33,8 @@ app.use(
   })
 );
 
-// ✅ IMPORTANT: Handle preflight (THIS FIXES YOUR ERROR)
-app.options("*", (req, res) => {
-  res.status(200).end();
-});
+// ✅ Preflight fix
+app.options("*", (req, res) => res.sendStatus(200));
 
 // -----------------------------------------------
 app.use(express.json({ limit: "50mb" }));
@@ -44,30 +42,43 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 
 // -----------------------------------------------
-// ✅ DB connection (safe for serverless)
+// ✅ ✅ BEST DB CONNECTION (SERVERLESS SAFE)
 // -----------------------------------------------
-let isConnected = false;
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
 
 const connectDB = async () => {
-  if (isConnected) return;
+  if (cached.conn) return cached.conn;
 
-  if (!process.env.MONGO_URI) {
-    console.warn("MONGO_URI missing");
-    return;
+  if (!cached.promise) {
+    if (!process.env.MONGO_URI) {
+      throw new Error("MONGO_URI missing");
+    }
+
+    cached.promise = mongoose
+      .connect(process.env.MONGO_URI, {
+        bufferCommands: false,
+      })
+      .then((mongoose) => mongoose);
   }
 
-  try {
-    const db = await mongoose.connect(process.env.MONGO_URI);
-    isConnected = db.connections[0].readyState === 1;
-    console.log("MongoDB connected");
-  } catch (err) {
-    console.error("DB error:", err.message);
-  }
+  cached.conn = await cached.promise;
+  console.log("MongoDB connected");
+  return cached.conn;
 };
 
+// ✅ Middleware to ensure DB connection
 app.use(async (req, res, next) => {
-  await connectDB();
-  next();
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("DB connection failed:", err.message);
+    return res.status(500).json({ error: "Database connection failed" });
+  }
 });
 
 // -----------------------------------------------
@@ -87,6 +98,5 @@ app.get("/api", (req, res) => {
   });
 });
 
-
-
-module.exports = app;        
+// ❌ NO app.listen() in Vercel
+module.exports = app;
