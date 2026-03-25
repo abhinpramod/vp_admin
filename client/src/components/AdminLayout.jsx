@@ -1,30 +1,54 @@
 import { useState } from "react";
 import AdminNavbar from "./AdminNavbar";
-import { IconButton, Typography } from "@mui/material";
+import { IconButton } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 
 const AdminLayout = ({ children }) => {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#fafafa] flex font-sans text-gray-900">
+    <div style={{ minHeight: "100vh", background: "#f5f4f1", display: "flex", fontFamily: "Inter, sans-serif" }}>
       <AdminNavbar open={open} setOpen={setOpen} />
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Bar (Mobile) */}
-        <div className="md:hidden bg-white/90 backdrop-blur-md sticky top-0 z-10 border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <IconButton onClick={() => setOpen(true)} className="!text-gray-900 !p-1">
-              <MenuIcon />
-            </IconButton>
-            <Typography variant="h6" fontWeight="600" className="text-gray-900 tracking-wide uppercase text-sm">
-              VP Interiors
-            </Typography>
-          </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        {/* Mobile Top Bar */}
+        <div
+          className="md:hidden"
+          style={{
+            background: "#0f1b2d",
+            borderBottom: "1px solid rgba(201,169,110,0.2)",
+            padding: "12px 16px",
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+          }}
+        >
+          <IconButton
+            onClick={() => setOpen(true)}
+            size="small"
+            style={{ color: "#c9a96e", padding: "4px" }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <span style={{
+            fontFamily: "Inter, sans-serif",
+            fontWeight: 700,
+            fontSize: "13px",
+            color: "#fff",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+          }}>
+            VP Interiors
+          </span>
         </div>
 
-        <main className="p-4 sm:p-8 lg:p-12 max-w-7xl w-full mx-auto">
+        {/* Main Content */}
+        <main style={{ padding: "32px 24px", maxWidth: "1280px", width: "100%", margin: "0 auto" }}
+          className="sm:p-10 lg:p-12"
+        >
           {children}
         </main>
       </div>

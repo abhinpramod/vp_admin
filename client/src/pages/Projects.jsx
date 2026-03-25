@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "../components/AdminLayout";
+import ConfirmDialog from "../components/ConfirmDialog";
 import api from "../api/api";
 import { 
   Button, Dialog, DialogTitle, DialogContent, DialogActions, 
   TextField, Table, TableBody, TableCell, TableHead, TableRow, 
   IconButton, Card, CardContent, Typography, useMediaQuery, useTheme,
-  FormControlLabel, Switch
+  FormControlLabel, Switch, Box, Tooltip
 } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
@@ -25,6 +26,9 @@ const Projects = () => {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [previewUrls, setPreviewUrls] = useState([]);
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
+  const [confirmToggle, setConfirmToggle] = useState({ open: false, id: null, currentStatus: null });
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (!files || files.length === 0) {
@@ -51,10 +55,22 @@ const Projects = () => {
     fetchProjects();
   }, []);
 
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.title.trim()) newErrors.title = "Project title is required";
+    if (!formData.category.trim()) newErrors.category = "Category is required";
+    if (!formData.totalCost || Number(formData.totalCost) <= 0) newErrors.totalCost = "Enter a valid cost";
+    if (!editingId && (!files || files.length === 0)) newErrors.files = "Select at least one image";
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleOpenNew = () => {
     setEditingId(null);
     setFormData({ title: "", category: "", totalCost: "", duration: "", description: "", isPublished: true });
     setFiles([]);
+    setErrors({});
     setOpen(true);
   };
 
@@ -66,17 +82,15 @@ const Projects = () => {
       totalCost: project.totalCost || "", 
       duration: project.duration || "", 
       description: project.description || "",
-      isPublished: project.isPublished !== false // Default true if undefined
+      isPublished: project.isPublished !== false 
     });
     setFiles([]);
+    setErrors({});
     setOpen(true);
   };
 
   const handleSave = async () => {
-    if (!formData.title || !formData.category) {
-      toast.error("Please fill in title and category");
-      return;
-    }
+    if (!validate()) return;
 
     setSaving(true);
     const data = new FormData();
@@ -87,17 +101,10 @@ const Projects = () => {
     data.append("description", formData.description);
     data.append("isPublished", formData.isPublished);
 
-    if (!editingId) {
-      data.append("materials", JSON.stringify([]));
-    }
+    if (!editingId) data.append("materials", JSON.stringify([]));
 
     if (files && files.length > 0) {
-      const options = {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 1920,
-        useWebWorker: true,
-      };
-
+      const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true };
       for (let i = 0; i < files.length; i++) {
         const compressedFile = await imageCompression(files[i], options);
         data.append("images", compressedFile, files[i].name);
@@ -106,15 +113,11 @@ const Projects = () => {
 
     try {
       if (editingId) {
-        await api.put(`/services/${editingId}`, data, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        toast.success("Project updated successfully!");
+        await api.put(`/services/${editingId}`, data, { headers: { "Content-Type": "multipart/form-data" } });
+        toast.success("Project updated!");
       } else {
-        await api.post("/services", data, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        toast.success("Project created successfully!");
+        await api.post("/services", data, { headers: { "Content-Type": "multipart/form-data" } });
+        toast.success("Project published!");
       }
       setOpen(false);
       fetchProjects();
@@ -125,24 +128,22 @@ const Projects = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure?")) return;
+  const handleDelete = async () => {
     try {
-      await api.delete(`/services/${id}`);
+      await api.delete(`/services/${confirmDelete.id}`);
       toast.success("Project deleted");
       fetchProjects();
     } catch (err) {
-      toast.error("Failed to delete project");
+      toast.error("Delete failed");
     }
   };
 
-  const handleTogglePublish = async (id, currentStatus) => {
+  const handleTogglePublish = async () => {
+    const { id, currentStatus } = confirmToggle;
     try {
       const data = new FormData();
       data.append("isPublished", !currentStatus);
-      await api.put(`/services/${id}`, data, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      await api.put(`/services/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } });
       toast.success(!currentStatus ? "Project Published!" : "Project Hidden");
       fetchProjects();
     } catch (err) {
@@ -162,193 +163,193 @@ const Projects = () => {
           startIcon={<AddIcon />} 
           onClick={handleOpenNew}
           fullWidth={isMobile}
-          className="!bg-gray-900 hover:!bg-black !text-white !rounded-lg !py-2.5 !px-5 !shadow-none !normal-case !font-medium"
+          className="!bg-navy hover:!bg-navy-hover !text-white !rounded-xl !py-3 !px-8 !shadow-none !normal-case !font-semibold"
         >
           Add Project
         </Button>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" /></div>
+        <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy" /></div>
+      ) : projects.length === 0 ? (
+        <div className="bg-white rounded-2xl p-20 text-center border border-dashed border-gray-300">
+           <Typography className="text-gray-400 font-medium italic">No projects available.</Typography>
+        </div>
       ) : isMobile ? (
         <div className="space-y-4">
           {projects.map((p) => (
-            <Card key={p._id} className="!rounded-xl shadow-sm border border-gray-200 overflow-hidden relative">
+            <Card key={p._id} className="!rounded-2xl shadow-sm border border-gray-200 overflow-hidden relative">
               <CardContent className="p-5">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <Typography variant="h6" fontWeight="500" className="text-gray-900 leading-tight flex items-center gap-2">
+                    <Typography variant="h6" fontWeight="700" className="text-navy leading-tight flex items-center gap-2">
                       {p.title}
-                      {p.isPublished === false && <span className="text-[9px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded uppercase font-bold tracking-widest">Hidden</span>}
+                      {p.isPublished === false && <span className="text-[9px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-lg uppercase font-bold tracking-widest border border-yellow-200">Hidden</span>}
                     </Typography>
-                    <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-[10px] font-medium uppercase tracking-wider rounded mt-1">{p.category}</span>
+                    <span className="inline-block px-2 py-1 bg-gray-100 text-gray-500 text-[10px] font-bold uppercase tracking-widest rounded-md mt-2 border border-gray-200">{p.category}</span>
                   </div>
                   <div className="flex gap-1">
-                    <IconButton size="small" onClick={() => handleOpenEdit(p)} className="!text-gray-400 hover:!text-gray-900 hover:!bg-gray-100">
-                      <EditOutlinedIcon fontSize="small" />
+                    <IconButton size="small" onClick={() => handleOpenEdit(p)} className="hover:!bg-gray-100">
+                      <EditOutlinedIcon fontSize="small" className="text-gray-400" />
                     </IconButton>
-                    <IconButton color="error" size="small" onClick={() => handleDelete(p._id)} className="!text-gray-400 hover:!text-red-500 hover:!bg-red-50">
-                      <DeleteOutlineIcon fontSize="small" />
+                    <IconButton size="small" onClick={() => setConfirmDelete({ open: true, id: p._id })} className="hover:!bg-red-50">
+                      <DeleteOutlineIcon fontSize="small" className="text-red-400" />
                     </IconButton>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-sm mt-4 border-t border-gray-100 pt-4">
+                <div className="grid grid-cols-2 gap-4 text-sm mt-4 border-t border-gray-50 pt-4">
                   <div>
-                    <p className="text-gray-400 text-[10px] uppercase font-medium tracking-wide">Estimate</p>
-                    <p className="font-regular text-gray-800">₹{p.totalCost}</p>
+                    <p className="text-gray-400 text-[9px] uppercase font-bold tracking-widest">Est. Cost</p>
+                    <p className="font-bold text-navy">₹{Number(p.totalCost || 0).toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-[10px] uppercase font-medium tracking-wide">Status</p>
-                    <FormControlLabel 
-                      control={<Switch size="small" checked={p.isPublished !== false} onChange={() => handleTogglePublish(p._id, p.isPublished !== false)} />} 
-                      label={<span className="text-[10px] uppercase font-bold tracking-wider text-gray-500">{p.isPublished !== false ? "Live" : "Hidden"}</span>} 
-                      className="!ml-0"
-                    />
+                    <p className="text-gray-400 text-[9px] uppercase font-bold tracking-widest mb-1 text-right">Visibility</p>
+                    <div className="flex justify-end">
+                      <Switch size="small" checked={p.isPublished !== false} onChange={() => setConfirmToggle({ open: true, id: p._id, currentStatus: p.isPublished !== false })} />
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
           ))}
-          {projects.length === 0 && <p className="text-center text-gray-400 py-20 font-medium">No projects available.</p>}
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200">
           <Table>
-            <TableHead className="bg-gray-50/80">
+            <TableHead className="bg-gray-50/50">
               <TableRow>
-                <TableCell className="!text-gray-500 !text-xs !font-medium !uppercase !tracking-wider">Title</TableCell>
-                <TableCell className="!text-gray-500 !text-xs !font-medium !uppercase !tracking-wider">Category</TableCell>
-                <TableCell className="!text-gray-500 !text-xs !font-medium !uppercase !tracking-wider">Status</TableCell>
-                <TableCell align="right" className="!text-gray-500 !text-xs !font-medium !uppercase !tracking-wider">Actions</TableCell>
+                <TableCell className="!text-gray-500 !text-xs !font-bold !uppercase !tracking-widest">Title</TableCell>
+                <TableCell className="!text-gray-500 !text-xs !font-bold !uppercase !tracking-widest">Cost & Duration</TableCell>
+                <TableCell className="!text-gray-500 !text-xs !font-bold !uppercase !tracking-widest">Visibility</TableCell>
+                <TableCell align="right" className="!text-gray-500 !text-xs !font-bold !uppercase !tracking-widest">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {projects.map((p) => (
-                <TableRow key={p._id} hover className="transition-colors">
-                  <TableCell className="!text-gray-900 !font-medium">
-                    {p.title}
+                <TableRow key={p._id} hover>
+                  <TableCell>
+                    <p className="font-bold text-navy">{p.title}</p>
+                    <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded font-bold uppercase tracking-widest">{p.category}</span>
                   </TableCell>
-                  <TableCell><span className="px-2 py-1 bg-gray-100 text-gray-700 text-[10px] font-medium uppercase tracking-wider rounded">{p.category}</span></TableCell>
+                  <TableCell>
+                    <p className="text-sm font-semibold text-gray-700">₹{Number(p.totalCost || 0).toLocaleString()}</p>
+                    <p className="text-xs text-gray-400">{p.duration || 'No duration set'}</p>
+                  </TableCell>
                   <TableCell>
                     <FormControlLabel 
-                      control={<Switch size="small" checked={p.isPublished !== false} onChange={() => handleTogglePublish(p._id, p.isPublished !== false)} />} 
-                      label={<span className={`text-[10px] uppercase font-bold tracking-wider ${p.isPublished !== false ? 'text-green-600' : 'text-gray-400'}`}>{p.isPublished !== false ? "Live" : "Hidden"}</span>} 
+                      control={<Switch size="small" checked={p.isPublished !== false} onChange={() => setConfirmToggle({ open: true, id: p._id, currentStatus: p.isPublished !== false })} />} 
+                      label={<span className={`text-[10px] uppercase font-bold tracking-widest ${p.isPublished !== false ? 'text-green-600' : 'text-gray-300'}`}>{p.isPublished !== false ? "Live" : "Hidden"}</span>} 
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <IconButton size="small" onClick={() => handleOpenEdit(p)} className="!text-gray-400 hover:!text-gray-900 hover:!bg-gray-100 transition-colors mr-1">
-                      <EditOutlinedIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleDelete(p._id)} className="!text-gray-400 hover:!text-red-600 hover:!bg-red-50 transition-colors">
-                      <DeleteOutlineIcon fontSize="small" />
-                    </IconButton>
+                    <Tooltip title="Edit Project">
+                      <IconButton size="small" onClick={() => handleOpenEdit(p)} className="hover:!bg-gray-100 mr-2">
+                        <EditOutlinedIcon fontSize="small" className="text-gray-400" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton size="small" onClick={() => setConfirmDelete({ open: true, id: p._id })} className="hover:!bg-red-50">
+                        <DeleteOutlineIcon fontSize="small" className="text-red-400" />
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))}
-              {projects.length === 0 && (
-                <TableRow><TableCell colSpan={4} align="center" className="py-20 text-gray-400">No records found.</TableCell></TableRow>
-              )}
             </TableBody>
           </Table>
         </div>
       )}
 
-      <Dialog 
-        open={open} 
-        onClose={() => setOpen(false)} 
-        maxWidth="sm" 
-        fullWidth 
-        PaperProps={{ className: "!rounded-xl" }}
-      >
-        <DialogTitle className="!font-medium !text-xl !text-gray-900 !pb-2">{editingId ? "Edit Project" : "New Portfolio Project"}</DialogTitle>
-        <DialogContent dividers className="space-y-5 !pt-5">
-          <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth PaperProps={{ className: "!rounded-3xl" }}>
+        <DialogTitle className="!font-bold !text-xl !pt-6">{editingId ? "Edit Project" : "New Portfolio Project"}</DialogTitle>
+        <DialogContent dividers className="space-y-6 !pt-6">
+          <div className="flex justify-between items-center bg-gray-50 p-4 rounded-2xl border border-gray-100">
             <div>
-              <Typography variant="body2" fontWeight="500" className="text-gray-900 tracking-wide">Project Visibility</Typography>
-              <Typography variant="caption" className="text-gray-500">Should this project appear on the live website?</Typography>
+              <Typography variant="body2" fontWeight="700" className="text-navy tracking-tight">Active Visibility</Typography>
+              <Typography variant="caption" className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Public Site Status</Typography>
             </div>
-            <FormControlLabel 
-              control={<Switch checked={formData.isPublished} onChange={e => setFormData({...formData, isPublished: e.target.checked})} />} 
-              label={<span className="text-xs uppercase font-bold tracking-wider text-gray-900">{formData.isPublished ? "Live" : "Hidden"}</span>} 
+            <Switch checked={formData.isPublished} onChange={e => setFormData({...formData, isPublished: e.target.checked})} />
+          </div>
+
+          <TextField 
+            label="Project Title" fullWidth value={formData.title} 
+            onChange={e => { setFormData({...formData, title: e.target.value}); if(errors.title) setErrors({...errors, title: null}); }} 
+            error={!!errors.title} helperText={errors.title}
+            variant="outlined" sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
+          />
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <TextField 
+                label="Category" fullWidth value={formData.category} 
+                onChange={e => { setFormData({...formData, category: e.target.value}); if(errors.category) setErrors({...errors, category: null}); }} 
+                error={!!errors.category} helperText={errors.category}
+                variant="outlined" sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
+            />
+            <TextField 
+                label="Total Cost (₹)" type="number" fullWidth value={formData.totalCost} 
+                onChange={e => { setFormData({...formData, totalCost: e.target.value}); if(errors.totalCost) setErrors({...errors, totalCost: null}); }} 
+                error={!!errors.totalCost} helperText={errors.totalCost}
+                variant="outlined" sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
             />
           </div>
 
           <TextField 
-            label="Project Title" 
-            fullWidth 
-            value={formData.title} 
-            onChange={e => setFormData({...formData, title: e.target.value})} 
-            variant="outlined"
-            size="small"
-          />
-          <div className="flex flex-col sm:flex-row gap-5">
-            <TextField 
-              label="Category (e.g., Residential)" 
-              fullWidth 
-              value={formData.category} 
-              onChange={e => setFormData({...formData, category: e.target.value})} 
-              variant="outlined"
-              size="small"
-            />
-            <TextField 
-              label="Total Cost (₹)" 
-              type="number" 
-              fullWidth 
-              value={formData.totalCost} 
-              onChange={e => setFormData({...formData, totalCost: e.target.value})} 
-              variant="outlined"
-              size="small"
-            />
-          </div>
-          <TextField 
-            label="Timeline/Duration (e.g., 2 Months)" 
-            fullWidth 
-            value={formData.duration} 
+            label="Timeline/Duration (e.g., 2 Months)" fullWidth value={formData.duration} 
             onChange={e => setFormData({...formData, duration: e.target.value})} 
-            variant="outlined"
-            size="small"
+            variant="outlined" sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
           />
           <TextField 
-            label="Project Description" 
-            multiline 
-            rows={4} 
-            fullWidth 
-            value={formData.description} 
+            label="Project Description" multiline rows={4} fullWidth value={formData.description} 
             onChange={e => setFormData({...formData, description: e.target.value})} 
-            variant="outlined"
+            variant="outlined" sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
           />
           
-          <div className="border border-dashed border-gray-300 p-6 rounded-lg text-center hover:bg-gray-50 transition-colors cursor-pointer group">
-            <label className="cursor-pointer block w-full h-full">
-              <input type="file" multiple onChange={(e) => setFiles(e.target.files)} className="hidden" accept="image/*" />
-              <div className="flex flex-col items-center gap-2">
-                <span className="text-gray-600 font-medium group-hover:text-gray-900 transition-colors">
-                  {files && files.length > 0 ? `${files.length} images selected. Click to override.` : editingId ? "Select new images to override existing ones" : "Browse files to upload"}
-                </span>
-                <span className="text-xs text-gray-400">High-resolution project photos</span>
+          <Box>
+              <div className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all bg-gray-50/50 hover:bg-gray-50 ${errors.files ? 'border-red-300' : 'border-gray-200 hover:border-gold'} cursor-pointer`}>
+                <label className="cursor-pointer block w-full h-full">
+                  <input type="file" multiple onChange={(e) => { setFiles(e.target.files); if(errors.files) setErrors({...errors, files: null}); }} className="hidden" accept="image/*" />
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-navy font-bold leading-tight">
+                      {files && files.length > 0 ? `${files.length} images selected` : editingId ? "Select new photos to override" : "Drop project photos here"}
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Architecture / Interior Shots</span>
+                  </div>
+                </label>
               </div>
-            </label>
-          </div>
+              {errors.files && <Typography variant="caption" color="error" className="mt-1 block ml-2 font-medium">{errors.files}</Typography>}
+          </Box>
+
           {previewUrls.length > 0 && (
-            <div className="flex gap-3 overflow-x-auto py-2">
+            <div className="flex gap-2 overflow-x-auto py-2">
               {previewUrls.map((url, i) => (
-                <img key={i} src={url} alt={`preview-${i}`} className="w-20 h-20 object-cover rounded-lg shadow-sm border border-gray-200 shrink-0" />
+                <img key={i} src={url} alt="" className="w-16 h-16 object-cover rounded-xl border border-gray-200 shadow-sm" />
               ))}
             </div>
           )}
         </DialogContent>
-        <DialogActions className="!px-6 !py-4 !bg-gray-50/50">
-          <Button onClick={() => setOpen(false)} className="!text-gray-500 !normal-case">Cancel</Button>
+        <DialogActions className="!px-8 !py-6">
+          <Button onClick={() => setOpen(false)} className="!text-gray-500 !normal-case !font-semibold">Cancel</Button>
           <Button 
-            onClick={handleSave} 
-            variant="contained" 
-            disabled={saving || !formData.title} 
-            className="!bg-gray-900 hover:!bg-black !text-white !rounded-lg !px-6 !shadow-none !normal-case !font-medium"
+            onClick={handleSave} variant="contained" disabled={saving} 
+            className="!bg-navy hover:!bg-navy-hover !text-white !rounded-xl !px-10 !py-2.5 !shadow-none !normal-case !font-semibold"
           >
             {saving ? "Saving..." : (editingId ? "Save Changes" : "Publish Project")}
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog 
+        open={confirmDelete.open} onClose={() => setConfirmDelete({ open: false, id: null })} onConfirm={handleDelete}
+        title="Delete Project?" message="This will remove the project from your public portfolio." danger
+      />
+
+      <ConfirmDialog 
+        open={confirmToggle.open} 
+        onClose={() => setConfirmToggle({ open: false, id: null, currentStatus: null })} 
+        onConfirm={handleTogglePublish}
+        title={confirmToggle.currentStatus ? "Hide Project?" : "Publish Project?"}
+        message={confirmToggle.currentStatus ? "This project will be hidden from the public website." : "This project will become visible on your public website."}
+      />
     </AdminLayout>
   );
 };

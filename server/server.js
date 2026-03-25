@@ -7,6 +7,7 @@ const authRoutes = require("./routes/auth.routes");
 const galleryRoutes = require("./routes/gallery.routes");
 const serviceRoutes = require("./routes/service.routes");
 const statsRoutes = require("./routes/stats.routes");
+const applicationRoutes = require("./routes/application.routes");
 
 const app = express();
 
@@ -17,6 +18,7 @@ const ALLOWED_ORIGINS = [
   "https://admin-inky-mu-29.vercel.app",
   "http://localhost:5173",
   "http://localhost:3000",
+  "http://localhost:5174",
 ];
 
 app.use((req, res, next) => {
@@ -96,6 +98,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/gallery", galleryRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/applications", applicationRoutes);
 
 // Health check
 app.get("/api", (req, res) =>
