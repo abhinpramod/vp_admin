@@ -13,17 +13,17 @@ const app = express();
 // -----------------------------------------------
 // CORS — must come BEFORE all other middleware
 // -----------------------------------------------
+const ALLOWED_ORIGINS = [
+  "https://admin-inky-mu-29.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  // Allow all vercel.app and localhost
-  const allowed =
-    !origin ||
-    origin.includes("vercel.app") ||
-    origin.includes("localhost");
-
-  if (allowed) {
-    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader(
       "Access-Control-Allow-Methods",
