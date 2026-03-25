@@ -51,12 +51,16 @@ const updateService = async (req, res) => {
     }
   }
 
-  service.title = req.body.title;
-  service.category = req.body.category;
-  service.duration = req.body.duration;
-  service.description = req.body.description;
-  service.materials = JSON.parse(req.body.materials);
+  if (req.body.title) service.title = req.body.title;
+  if (req.body.category) service.category = req.body.category;
+  if (req.body.duration) service.duration = req.body.duration;
+  if (req.body.description) service.description = req.body.description;
+  if (req.body.materials) service.materials = JSON.parse(req.body.materials);
   service.images = images;
+
+  if (req.body.isPublished !== undefined) {
+    service.isPublished = req.body.isPublished === 'true' || req.body.isPublished === true;
+  }
 
   await service.save();
   res.json(service);

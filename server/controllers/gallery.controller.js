@@ -4,9 +4,12 @@ const cloudinary = require("../utils/cloudinary");
 const uploadGalleryImage = async (req, res) => {
   const result = await cloudinary.uploader.upload(req.file.path);
 
+  const isPublished = req.body.isPublished !== undefined ? (req.body.isPublished === 'true' || req.body.isPublished === true) : true;
+
   const image = await Gallery.create({
     publicId: result.public_id,
-    category: req.body.category
+    category: req.body.category,
+    isPublished
   });
 
   res.status(201).json(image);
@@ -23,8 +26,19 @@ const deleteGalleryImage = async (req, res) => {
   res.json({ message: "Deleted" });
 };
 
+const updateGalleryImage = async (req, res) => {
+  const image = await Gallery.findById(req.params.id);
+  if (req.body.category) image.category = req.body.category;
+  if (req.body.isPublished !== undefined) {
+    image.isPublished = req.body.isPublished === 'true' || req.body.isPublished === true;
+  }
+  await image.save();
+  res.json(image);
+};
+
 module.exports = {
   uploadGalleryImage,
   getGallery,
-  deleteGalleryImage
+  deleteGalleryImage,
+  updateGalleryImage
 };

@@ -10,6 +10,7 @@ const serviceRoutes = require("./routes/service.routes");
 const statsRoutes = require("./routes/stats.routes");
 const clientUrl = process.env.CLIENT_URL;
 
+
 const app = express();
 
 app.use(cors({

@@ -12,7 +12,8 @@ const serviceSchema = new mongoose.Schema({
     }
   ],
   description: String,
-  images: [String]
+  images: [String],
+  isPublished: { type: Boolean, default: true }
 }, { timestamps: true });
 
 module.exports = mongoose.model("Service", serviceSchema);

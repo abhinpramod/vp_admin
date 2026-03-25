@@ -8,6 +8,10 @@ const gallerySchema = new mongoose.Schema({
   category: {
     type: String,
     required: true
+  },
+  isPublished: {
+    type: Boolean,
+    default: true
   }
 }, { timestamps: true });
 

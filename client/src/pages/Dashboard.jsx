@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "../components/AdminLayout";
-import axios from "axios";
+import api from "../api/api";
 import { useMediaQuery, useTheme } from "@mui/material";
 
 const Dashboard = () => {
@@ -16,9 +16,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/stats", {
-          withCredentials: true
-        });
+        const res = await api.get("/stats");
         setStats(res.data);
       } catch (error) {
         console.error("Error fetching stats:", error);

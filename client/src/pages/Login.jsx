@@ -9,7 +9,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import axios from "axios";
+import api from "../api/api";
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
@@ -24,11 +24,7 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      const res = await axios.post(
-        "http://localhost:5000/api/auth/login",
-        { email, password },
-        { withCredentials: true }
-      );
+      const res = await api.post("/auth/login", { email, password });
 
       if(res.data.success){
         navigate("/admin");

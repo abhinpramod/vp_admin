@@ -11,7 +11,7 @@ import WorkIcon from "@mui/icons-material/Work";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import { NavLink, useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../api/api";
 
 const menuItems = [
   { text: "Overview", icon: <DashboardIcon />, path: "/admin" },
@@ -24,7 +24,7 @@ const AdminNavbar = ({ open, setOpen }) => {
 
   const handleLogout = async () => {
     try {
-      await axios.post("http://localhost:5000/api/auth/logout", {}, { withCredentials: true });
+      await api.post("/auth/logout");
       navigate("/");
     } catch (err) {
       console.error("Logout failed:", err);
@@ -37,12 +37,12 @@ const AdminNavbar = ({ open, setOpen }) => {
         open={open} 
         onClose={() => setOpen(false)} 
         className="md:hidden"
-        PaperProps={{ className: "!w-72 !rounded-r-xl !shadow-xl" }}
+        PaperProps={{ className: "!w-72 !rounded-r-xl !shadow-2xl !bg-[#0f172a] !text-white" }}
       >
         <SidebarContent close={() => setOpen(false)} handleLogout={handleLogout} />
       </Drawer>
 
-      <div className="hidden md:block w-72 h-screen sticky top-0 bg-white border-r border-gray-200">
+      <div className="hidden md:block w-72 h-screen sticky top-0 bg-[#0f172a] border-r border-slate-800 text-white shadow-xl z-20">
         <SidebarContent handleLogout={handleLogout} />
       </div>
     </>
@@ -51,11 +51,11 @@ const AdminNavbar = ({ open, setOpen }) => {
 
 const SidebarContent = ({ close, handleLogout }) => (
   <div className="h-full flex flex-col p-6">
-    <div className="mb-12 px-2">
-      <Typography variant="h6" fontWeight="600" className="text-gray-900 tracking-wide uppercase text-sm">
+    <div className="mb-12 px-2 mt-2">
+      <Typography variant="h6" fontWeight="700" className="text-white tracking-widest uppercase text-sm">
         VP Interiors
       </Typography>
-      <Typography variant="caption" className="text-gray-400 uppercase tracking-[0.2em] block mt-1 text-[10px]">
+      <Typography variant="caption" className="text-slate-400 uppercase tracking-[0.2em] block mt-1 text-[10px]">
         Administration
       </Typography>
     </div>
@@ -67,15 +67,15 @@ const SidebarContent = ({ close, handleLogout }) => (
             <ListItemButton
               className={`!rounded-lg transition-all duration-300 py-3 ${
                 isActive 
-                  ? "bg-gray-900 !text-white shadow-sm" 
-                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-slate-800 !text-white shadow-lg border border-slate-700" 
+                  : "text-slate-400 hover:bg-slate-800/50 hover:text-white"
               }`}
             >
-              <ListItemIcon className={isActive ? "!text-white" : "!text-gray-400"}>
+              <ListItemIcon className={isActive ? "!text-white" : "!text-slate-400"}>
                 {item.icon}
               </ListItemIcon>
               <ListItemText 
-                primary={<span className={`tracking-wide text-sm ${isActive ? 'font-medium' : 'font-normal'}`}>{item.text}</span>} 
+                primary={<span className={`tracking-wide text-sm ${isActive ? 'font-semibold' : 'font-medium'}`}>{item.text}</span>} 
               />
             </ListItemButton>
           )}
@@ -83,10 +83,10 @@ const SidebarContent = ({ close, handleLogout }) => (
       ))}
     </List>
 
-    <div className="mt-auto pt-6 border-t border-gray-200">
-      <ListItemButton className="!rounded-lg text-gray-500 hover:bg-gray-50 py-3 transition-colors" onClick={handleLogout}>
-        <ListItemIcon className="!text-gray-400"><ExitToAppIcon /></ListItemIcon>
-        <ListItemText primary={<span className="font-normal text-sm tracking-wide">Logout</span>} />
+    <div className="mt-auto pt-6 border-t border-slate-800">
+      <ListItemButton className="!rounded-lg text-slate-400 hover:bg-slate-800/50 py-3 transition-colors" onClick={handleLogout}>
+        <ListItemIcon className="!text-slate-400"><ExitToAppIcon /></ListItemIcon>
+        <ListItemText primary={<span className="font-medium text-sm tracking-wide">Logout</span>} />
       </ListItemButton>
     </div>
   </div>
