@@ -47,20 +47,49 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 
-// DB connection — wrapped so missing MONGO_URI doesn't crash the server
+// -----------------------------------------------
+// MongoDB — serverless-safe connection caching
+// -----------------------------------------------
+mongoose.set("bufferCommands", false); // fail fast instead of buffering forever
+
+let cachedConnection = null;
+
 const connectDB = async () => {
   if (!process.env.MONGO_URI) {
     console.warn("WARNING: MONGO_URI is not set. DB features will not work.");
     return;
   }
-  try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log("MongoDB connected");
-  } catch (err) {
-    console.error("DB connection error:", err.message);
+  // Already connected
+  if (mongoose.connection.readyState === 1) return;
+  // Reuse in-progress connection promise (handles concurrent cold starts)
+  if (!cachedConnection) {
+    cachedConnection = mongoose
+      .connect(process.env.MONGO_URI, {
+        serverSelectionTimeoutMS: 10000,
+        socketTimeoutMS: 45000,
+      })
+      .then(() => {
+        console.log("MongoDB connected");
+      })
+      .catch((err) => {
+        console.error("DB connection error:", err.message);
+        cachedConnection = null; // allow retry on next request
+        throw err;
+      });
   }
+  return cachedConnection;
 };
-connectDB();
+
+// Ensure DB is connected before every request (critical for serverless)
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    res.status(503).json({ message: "Database unavailable", error: err.message });
+  }
+});
+
 
 // Routes
 app.use("/api/auth", authRoutes);
