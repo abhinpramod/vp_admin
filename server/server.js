@@ -8,11 +8,12 @@ const authRoutes = require("./routes/auth.routes");
 const galleryRoutes = require("./routes/gallery.routes");
 const serviceRoutes = require("./routes/service.routes");
 const statsRoutes = require("./routes/stats.routes");
+const clientUrl = process.env.CLIENT_URL;
 
 const app = express();
 
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5174"],
+  origin: [clientUrl, "http://localhost:5173", "http://localhost:5174"],
   credentials: true
 }));
 
