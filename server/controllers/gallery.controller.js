@@ -2,17 +2,25 @@ const Gallery = require("../models/Gallery");
 const cloudinary = require("../utils/cloudinary");
 
 const uploadGalleryImage = async (req, res) => {
-  const result = await cloudinary.uploader.upload(req.file.path);
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No image file provided" });
+    }
+    const result = await cloudinary.uploader.upload(req.file.path);
 
-  const isPublished = req.body.isPublished !== undefined ? (req.body.isPublished === 'true' || req.body.isPublished === true) : true;
+    const isPublished = req.body.isPublished !== undefined ? (req.body.isPublished === 'true' || req.body.isPublished === true) : true;
 
-  const image = await Gallery.create({
-    publicId: result.public_id,
-    category: req.body.category,
-    isPublished
-  });
+    const image = await Gallery.create({
+      publicId: result.public_id,
+      category: req.body.category,
+      isPublished
+    });
 
-  res.status(201).json(image);
+    res.status(201).json(image);
+  } catch (error) {
+    console.error("GALLERY UPLOAD ERROR:", error);
+    res.status(500).json({ message: error.message });
+  }
 };
 
 const getGallery = async (req, res) => {

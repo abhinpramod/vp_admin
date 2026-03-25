@@ -21,6 +21,17 @@ const Gallery = () => {
   const [formData, setFormData] = useState({ category: "", isPublished: true });
   const [editingId, setEditingId] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -80,7 +91,7 @@ const Gallery = () => {
         const compressedFile = await imageCompression(file, options);
 
         const data = new FormData();
-        data.append("image", compressedFile);
+        data.append("image", compressedFile, file.name);
         data.append("category", formData.category);
         data.append("isPublished", formData.isPublished);
 
@@ -202,15 +213,24 @@ const Gallery = () => {
           />
 
           {!editingId && (
-            <div className="border border-dashed border-gray-300 p-8 rounded-lg text-center bg-gray-50/50 hover:bg-gray-50 transition-all group flex flex-col justify-center cursor-pointer">
-              <label className="cursor-pointer block w-full h-full">
+            <div className="border border-dashed border-gray-300 p-8 rounded-lg text-center bg-gray-50/50 hover:bg-gray-50 transition-all group flex flex-col justify-center cursor-pointer relative overflow-hidden min-h-[200px]">
+              <label className="cursor-pointer block w-full h-full absolute inset-0 z-10">
                 <input type="file" onChange={(e) => setFile(e.target.files[0])} className="hidden" accept="image/*" />
-                <div className="flex flex-col items-center gap-2">
+              </label>
+              {previewUrl ? (
+                <>
+                  <img src={previewUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-90" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="text-white font-medium text-sm">Click to change image</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-2 relative z-0 pointer-events-none">
                   <span className="text-gray-600 font-medium group-hover:text-gray-900 transition-colors">
-                    {file ? file.name : "Browse design files"}
+                    Browse design files
                   </span>
                 </div>
-              </label>
+              )}
             </div>
           )}
         </DialogContent>

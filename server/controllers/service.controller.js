@@ -2,20 +2,26 @@ const Service = require("../models/Service");
 const cloudinary = require("../utils/cloudinary");
 
 const createService = async (req, res) => {
-  const images = [];
+  try {
+    const images = [];
 
-  for (let file of req.files) {
-    const result = await cloudinary.uploader.upload(file.path);
-    images.push(result.public_id);
+    if (req.files) {
+      for (let file of req.files) {
+        const result = await cloudinary.uploader.upload(file.path);
+        images.push(result.public_id);
+      }
+    }
+
+    const service = await Service.create({
+      ...req.body,
+      materials: req.body.materials ? JSON.parse(req.body.materials) : [],
+      images
+    });
+
+    res.status(201).json(service);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
-
-  const service = await Service.create({
-    ...req.body,
-    materials: req.body.materials ? JSON.parse(req.body.materials) : [],
-    images
-  });
-
-  res.status(201).json(service);
 };
 
 const getServices = async (req, res) => {

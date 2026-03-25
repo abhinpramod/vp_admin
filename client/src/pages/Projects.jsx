@@ -24,6 +24,17 @@ const Projects = () => {
   const [files, setFiles] = useState([]);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [previewUrls, setPreviewUrls] = useState([]);
+
+  useEffect(() => {
+    if (!files || files.length === 0) {
+      setPreviewUrls([]);
+      return;
+    }
+    const urls = Array.from(files).map(f => URL.createObjectURL(f));
+    setPreviewUrls(urls);
+    return () => urls.forEach(url => URL.revokeObjectURL(url));
+  }, [files]);
 
   const fetchProjects = async () => {
     try {
@@ -89,7 +100,7 @@ const Projects = () => {
 
       for (let i = 0; i < files.length; i++) {
         const compressedFile = await imageCompression(files[i], options);
-        data.append("images", compressedFile);
+        data.append("images", compressedFile, files[i].name);
       }
     }
 
@@ -309,15 +320,22 @@ const Projects = () => {
           
           <div className="border border-dashed border-gray-300 p-6 rounded-lg text-center hover:bg-gray-50 transition-colors cursor-pointer group">
             <label className="cursor-pointer block w-full h-full">
-              <input type="file" multiple onChange={(e) => setFiles(e.target.files)} className="hidden" />
+              <input type="file" multiple onChange={(e) => setFiles(e.target.files)} className="hidden" accept="image/*" />
               <div className="flex flex-col items-center gap-2">
                 <span className="text-gray-600 font-medium group-hover:text-gray-900 transition-colors">
-                  {files && files.length > 0 ? `${files.length} images selected` : editingId ? "Select new images to override existing ones" : "Browse files to upload"}
+                  {files && files.length > 0 ? `${files.length} images selected. Click to override.` : editingId ? "Select new images to override existing ones" : "Browse files to upload"}
                 </span>
                 <span className="text-xs text-gray-400">High-resolution project photos</span>
               </div>
             </label>
           </div>
+          {previewUrls.length > 0 && (
+            <div className="flex gap-3 overflow-x-auto py-2">
+              {previewUrls.map((url, i) => (
+                <img key={i} src={url} alt={`preview-${i}`} className="w-20 h-20 object-cover rounded-lg shadow-sm border border-gray-200 shrink-0" />
+              ))}
+            </div>
+          )}
         </DialogContent>
         <DialogActions className="!px-6 !py-4 !bg-gray-50/50">
           <Button onClick={() => setOpen(false)} className="!text-gray-500 !normal-case">Cancel</Button>
