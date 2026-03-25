@@ -13,8 +13,27 @@ const clientUrl = process.env.CLIENT_URL;
 
 const app = express();
 
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "http://localhost:5173",
+  "http://localhost:5174",
+];
+
 app.use(cors({
-  origin: [clientUrl, "http://localhost:5173", "http://localhost:5174"],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    
+    // Allow any Vercel deployment URL for this app or whitelisted origins
+    const isVercel = origin.includes("vercel.app");
+    const isAllowed = allowedOrigins.includes(origin);
+    
+    if (isVercel || isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true
 }));
 
