@@ -15,6 +15,8 @@ const app = express();
 // -----------------------------------------------
 app.use((req, res, next) => {
   const origin = req.headers.origin;
+
+  // Allow all vercel.app and localhost
   const allowed =
     !origin ||
     origin.includes("vercel.app") ||
@@ -33,7 +35,7 @@ app.use((req, res, next) => {
     );
   }
 
-  // Handle preflight OPTIONS request immediately
+  // Handle preflight OPTIONS request immediately — no auth needed
   if (req.method === "OPTIONS") {
     return res.sendStatus(200);
   }
@@ -45,11 +47,20 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 
-// DB connection
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.log("DB Error:", err));
+// DB connection — wrapped so missing MONGO_URI doesn't crash the server
+const connectDB = async () => {
+  if (!process.env.MONGO_URI) {
+    console.warn("WARNING: MONGO_URI is not set. DB features will not work.");
+    return;
+  }
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("MongoDB connected");
+  } catch (err) {
+    console.error("DB connection error:", err.message);
+  }
+};
+connectDB();
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -58,7 +69,17 @@ app.use("/api/services", serviceRoutes);
 app.use("/api/stats", statsRoutes);
 
 // Health check
-app.get("/api", (req, res) => res.json({ status: "Server is running" }));
+app.get("/api", (req, res) =>
+  res.json({
+    status: "Server is running",
+    mongo: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    env: {
+      has_mongo: !!process.env.MONGO_URI,
+      has_cloudinary: !!process.env.cloud_name,
+      has_jwt: !!process.env.JWT_SECRET,
+    },
+  })
+);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
