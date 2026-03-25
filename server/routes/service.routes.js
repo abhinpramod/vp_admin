@@ -11,8 +11,8 @@ const {
 
 const router = express.Router();
 
-// Multer config (temporary local storage)
-const upload = multer({ dest: "uploads/" });
+// Multer config (memory storage — required for Vercel serverless)
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Get all services (public / admin)
 router.get("/", getServices);

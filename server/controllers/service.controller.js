@@ -1,13 +1,26 @@
 const Service = require("../models/Service");
 const cloudinary = require("../utils/cloudinary");
 
+// Helper: upload a buffer to Cloudinary
+const uploadBuffer = (buffer) =>
+  new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { resource_type: "image" },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    stream.end(buffer);
+  });
+
 const createService = async (req, res) => {
   try {
     const images = [];
 
     if (req.files) {
       for (let file of req.files) {
-        const result = await cloudinary.uploader.upload(file.path);
+        const result = await uploadBuffer(file.buffer);
         images.push(result.public_id);
       }
     }
@@ -52,7 +65,7 @@ const updateService = async (req, res) => {
   if (req.files && req.files.length > 0) {
     images = [];
     for (let file of req.files) {
-      const result = await cloudinary.uploader.upload(file.path);
+      const result = await uploadBuffer(file.buffer);
       images.push(result.public_id);
     }
   }
