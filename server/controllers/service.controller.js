@@ -11,6 +11,7 @@ const createService = async (req, res) => {
 
   const service = await Service.create({
     ...req.body,
+    materials: req.body.materials ? JSON.parse(req.body.materials) : [],
     images
   });
 

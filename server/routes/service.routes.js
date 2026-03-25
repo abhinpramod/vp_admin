@@ -4,7 +4,9 @@ const adminAuth = require("../middleware/adminAuth");
 const {
   createService,
   getServices,
-  deleteService
+  deleteService,
+  getServiceById,
+  updateService
 } = require("../controllers/service.controller");
 
 const router = express.Router();

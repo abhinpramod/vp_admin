@@ -1,81 +1,23 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Login from "./pages/Login";
-import Services from "./pages/Services";
-import Layout from "./components/Layout";
-import Gallery from "./pages/Gallery";
-import ProtectedRoute from "./components/ProtectedRoute";
-import { AuthProvider } from "./context/AuthContext";
-import AddService from "./pages/AddService";
+import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
-import ProjectDetails from "./pages/ProjectDetails";
-import EditProject from "./pages/EditProject";
+import Gallery from "./pages/Gallery";
+import Login from "./pages/Login";
+import { Toaster } from "react-hot-toast";
 
-export default function App() {
+function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+    <BrowserRouter>
+      <Toaster position="top-right" />
+      <Routes>
+        <Route path="/" element={<Login />} />
 
-          <Route
-            path="/services"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Services />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route path="/projects/:id" element={<Layout><ProjectDetails /></Layout>} />
-
-<Route
-  path="/edit-project/:id"
-  element={
-    <ProtectedRoute>
-      <Layout>
-        <EditProject />
-      </Layout>
-    </ProtectedRoute>
-  }
-/>
-
-
-          <Route
-  path="/add-service"
-  element={
-    <ProtectedRoute>
-      <Layout>
-        <AddService />
-      </Layout>
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/projects"
-  element={
-    <Layout>
-      <Projects />
-    </Layout>
-  }
-/>
-
-
-          <Route
-  path="/gallery"
-  element={
-    <ProtectedRoute>
-      <Layout>
-        <Gallery />
-      </Layout>
-    </ProtectedRoute>
-  }
-/>
-
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+        <Route path="/admin" element={<Dashboard />} />
+        <Route path="/admin/projects" element={<Projects />} />
+        <Route path="/admin/gallery" element={<Gallery />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
+
+export default App;
