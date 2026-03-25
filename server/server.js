@@ -1,7 +1,6 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
-const cors = require("cors");
 require("dotenv").config();
 
 const authRoutes = require("./routes/auth.routes");
@@ -12,7 +11,7 @@ const statsRoutes = require("./routes/stats.routes");
 const app = express();
 
 // -----------------------------------------------
-// ✅ CORS (SAFE)
+// CORS — must come BEFORE all other middleware
 // -----------------------------------------------
 const ALLOWED_ORIGINS = [
   "https://admin-inky-mu-29.vercel.app",
@@ -20,83 +19,71 @@ const ALLOWED_ORIGINS = [
   "http://localhost:3000",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || ALLOWED_ORIGINS.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  })
-);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
 
-// ✅ Preflight fix
-app.options("*", (req, res) => res.sendStatus(200));
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type,Authorization,X-Requested-With"
+    );
+  }
 
-// -----------------------------------------------
+  // Handle preflight OPTIONS request immediately — no auth needed
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 
-// -----------------------------------------------
-// ✅ ✅ BEST DB CONNECTION (SERVERLESS SAFE)
-// -----------------------------------------------
-let cached = global.mongoose;
-
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
-}
-
+// DB connection — wrapped so missing MONGO_URI doesn't crash the server
 const connectDB = async () => {
-  if (cached.conn) return cached.conn;
-
-  if (!cached.promise) {
-    if (!process.env.MONGO_URI) {
-      throw new Error("MONGO_URI missing");
-    }
-
-    cached.promise = mongoose
-      .connect(process.env.MONGO_URI, {
-        bufferCommands: false,
-      })
-      .then((mongoose) => mongoose);
+  if (!process.env.MONGO_URI) {
+    console.warn("WARNING: MONGO_URI is not set. DB features will not work.");
+    return;
   }
-
-  cached.conn = await cached.promise;
-  console.log("MongoDB connected");
-  return cached.conn;
-};
-
-// ✅ Middleware to ensure DB connection
-app.use(async (req, res, next) => {
   try {
-    await connectDB();
-    next();
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("MongoDB connected");
   } catch (err) {
-    console.error("DB connection failed:", err.message);
-    return res.status(500).json({ error: "Database connection failed" });
+    console.error("DB connection error:", err.message);
   }
-});
+};
+connectDB();
 
-// -----------------------------------------------
 // Routes
-// -----------------------------------------------
 app.use("/api/auth", authRoutes);
 app.use("/api/gallery", galleryRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/stats", statsRoutes);
 
-// -----------------------------------------------
 // Health check
-// -----------------------------------------------
-app.get("/api", (req, res) => {
+app.get("/api", (req, res) =>
   res.json({
     status: "Server is running",
-  });
+    mongo: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    env: {
+      has_mongo: !!process.env.MONGO_URI,
+      has_cloudinary: !!process.env.cloud_name,
+      has_jwt: !!process.env.JWT_SECRET,
+    },
+  })
+);
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
-// ❌ NO app.listen() in Vercel
 module.exports = app;

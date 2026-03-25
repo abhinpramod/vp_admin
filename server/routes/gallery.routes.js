@@ -3,7 +3,7 @@ const multer = require("multer");
 const adminAuth = require("../middleware/adminAuth");
 const controller = require("../controllers/gallery.controller");
 
-const upload = multer({ dest: "uploads/" });
+const upload = multer({ storage: multer.memoryStorage() });
 
 router.get("/", controller.getGallery);
 router.post("/", adminAuth, upload.single("image"), controller.uploadGalleryImage);
