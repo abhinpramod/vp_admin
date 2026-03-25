@@ -26,7 +26,7 @@ app.use(
       if (!origin || ALLOWED_ORIGINS.includes(origin)) {
         callback(null, true);
       } else {
-        callback(null, true); // ⚠️ allow all (temporary safe fix)
+        callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
@@ -89,4 +89,4 @@ app.get("/api", (req, res) => {
 
 
 
-module.exports = app;
+module.exports = app;        
