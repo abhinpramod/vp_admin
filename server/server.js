@@ -8,6 +8,7 @@ const galleryRoutes = require("./routes/gallery.routes");
 const serviceRoutes = require("./routes/service.routes");
 const statsRoutes = require("./routes/stats.routes");
 const applicationRoutes = require("./routes/application.routes");
+const categoryRoutes = require("./routes/category.routes");
 
 const app = express();
 
@@ -99,6 +100,7 @@ app.use("/api/gallery", galleryRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/applications", applicationRoutes);
+app.use("/api/categories", categoryRoutes);
 
 // Health check
 app.get("/api", (req, res) =>

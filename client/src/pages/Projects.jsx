@@ -1,44 +1,39 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import ConfirmDialog from "../components/ConfirmDialog";
 import api from "../api/api";
 import { 
-  Button, Dialog, DialogTitle, DialogContent, DialogActions, 
-  TextField, Table, TableBody, TableCell, TableHead, TableRow, 
+  Button, Table, TableBody, TableCell, TableHead, TableRow, 
   IconButton, Card, CardContent, Typography, useMediaQuery, useTheme,
-  FormControlLabel, Switch, Box, Tooltip
+  FormControlLabel, Switch, Box, Tooltip, Dialog, DialogContent, DialogActions
 } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import AddIcon from "@mui/icons-material/Add";
+import CloseIcon from "@mui/icons-material/Close";
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import toast from "react-hot-toast";
-import imageCompression from 'browser-image-compression';
+
+const CLOUD_NAME = "dyu8lsstq";
+const resolveImageUrl = (img) => {
+  if (!img) return null;
+  if (img.startsWith("http")) return img;
+  return `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${img}`;
+};
 
 const Projects = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const navigate = useNavigate();
   
-  const [formData, setFormData] = useState({ title: "", category: "", totalCost: "", duration: "", description: "", isPublished: true });
-  const [files, setFiles] = useState([]);
-  const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [previewUrls, setPreviewUrls] = useState([]);
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
   const [confirmToggle, setConfirmToggle] = useState({ open: false, id: null, currentStatus: null });
-  const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    if (!files || files.length === 0) {
-      setPreviewUrls([]);
-      return;
-    }
-    const urls = Array.from(files).map(f => URL.createObjectURL(f));
-    setPreviewUrls(urls);
-    return () => urls.forEach(url => URL.revokeObjectURL(url));
-  }, [files]);
+  const [viewProject, setViewProject] = useState(null);
+  const [carouselIndex, setCarouselIndex] = useState(0);
 
   const fetchProjects = async () => {
     try {
@@ -54,79 +49,6 @@ const Projects = () => {
   useEffect(() => {
     fetchProjects();
   }, []);
-
-  const validate = () => {
-    const newErrors = {};
-    if (!formData.title.trim()) newErrors.title = "Project title is required";
-    if (!formData.category.trim()) newErrors.category = "Category is required";
-    if (!formData.totalCost || Number(formData.totalCost) <= 0) newErrors.totalCost = "Enter a valid cost";
-    if (!editingId && (!files || files.length === 0)) newErrors.files = "Select at least one image";
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleOpenNew = () => {
-    setEditingId(null);
-    setFormData({ title: "", category: "", totalCost: "", duration: "", description: "", isPublished: true });
-    setFiles([]);
-    setErrors({});
-    setOpen(true);
-  };
-
-  const handleOpenEdit = (project) => {
-    setEditingId(project._id);
-    setFormData({ 
-      title: project.title || "", 
-      category: project.category || "", 
-      totalCost: project.totalCost || "", 
-      duration: project.duration || "", 
-      description: project.description || "",
-      isPublished: project.isPublished !== false 
-    });
-    setFiles([]);
-    setErrors({});
-    setOpen(true);
-  };
-
-  const handleSave = async () => {
-    if (!validate()) return;
-
-    setSaving(true);
-    const data = new FormData();
-    data.append("title", formData.title);
-    data.append("category", formData.category);
-    data.append("totalCost", formData.totalCost);
-    data.append("duration", formData.duration);
-    data.append("description", formData.description);
-    data.append("isPublished", formData.isPublished);
-
-    if (!editingId) data.append("materials", JSON.stringify([]));
-
-    if (files && files.length > 0) {
-      const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true };
-      for (let i = 0; i < files.length; i++) {
-        const compressedFile = await imageCompression(files[i], options);
-        data.append("images", compressedFile, files[i].name);
-      }
-    }
-
-    try {
-      if (editingId) {
-        await api.put(`/services/${editingId}`, data, { headers: { "Content-Type": "multipart/form-data" } });
-        toast.success("Project updated!");
-      } else {
-        await api.post("/services", data, { headers: { "Content-Type": "multipart/form-data" } });
-        toast.success("Project published!");
-      }
-      setOpen(false);
-      fetchProjects();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to save project");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleDelete = async () => {
     try {
@@ -161,7 +83,7 @@ const Projects = () => {
         <Button 
           variant="contained" 
           startIcon={<AddIcon />} 
-          onClick={handleOpenNew}
+          onClick={() => navigate("/admin/projects/new")}
           fullWidth={isMobile}
           className="!bg-navy hover:!bg-navy-hover !text-white !rounded-xl !py-3 !px-8 !shadow-none !normal-case !font-semibold"
         >
@@ -178,7 +100,10 @@ const Projects = () => {
       ) : isMobile ? (
         <div className="space-y-4">
           {projects.map((p) => (
-            <Card key={p._id} className="!rounded-2xl shadow-sm border border-gray-200 overflow-hidden relative">
+            <Card key={p._id} onClick={() => { setViewProject(p); setCarouselIndex(0); }} className="!rounded-2xl shadow-sm border border-gray-200 overflow-hidden relative cursor-pointer hover:shadow-md transition-shadow">
+              {p.images && p.images.length > 0 && (
+                <img src={resolveImageUrl(p.images[0])} alt={p.title} className="w-full h-36 object-cover" />
+              )}
               <CardContent className="p-5">
                 <div className="flex justify-between items-start mb-4">
                   <div>
@@ -189,10 +114,10 @@ const Projects = () => {
                     <span className="inline-block px-2 py-1 bg-gray-100 text-gray-500 text-[10px] font-bold uppercase tracking-widest rounded-md mt-2 border border-gray-200">{p.category}</span>
                   </div>
                   <div className="flex gap-1">
-                    <IconButton size="small" onClick={() => handleOpenEdit(p)} className="hover:!bg-gray-100">
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigate(`/admin/projects/edit/${p._id}`); }} className="hover:!bg-gray-100">
                       <EditOutlinedIcon fontSize="small" className="text-gray-400" />
                     </IconButton>
-                    <IconButton size="small" onClick={() => setConfirmDelete({ open: true, id: p._id })} className="hover:!bg-red-50">
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setConfirmDelete({ open: true, id: p._id }); }} className="hover:!bg-red-50">
                       <DeleteOutlineIcon fontSize="small" className="text-red-400" />
                     </IconButton>
                   </div>
@@ -218,6 +143,7 @@ const Projects = () => {
           <Table>
             <TableHead className="bg-gray-50/50">
               <TableRow>
+                <TableCell className="!text-gray-500 !text-xs !font-bold !uppercase !tracking-widest !w-16">Photo</TableCell>
                 <TableCell className="!text-gray-500 !text-xs !font-bold !uppercase !tracking-widest">Title</TableCell>
                 <TableCell className="!text-gray-500 !text-xs !font-bold !uppercase !tracking-widest">Cost & Duration</TableCell>
                 <TableCell className="!text-gray-500 !text-xs !font-bold !uppercase !tracking-widest">Visibility</TableCell>
@@ -226,7 +152,14 @@ const Projects = () => {
             </TableHead>
             <TableBody>
               {projects.map((p) => (
-                <TableRow key={p._id} hover>
+                <TableRow key={p._id} hover onClick={() => { setViewProject(p); setCarouselIndex(0); }} className="cursor-pointer">
+                  <TableCell>
+                    {p.images && p.images.length > 0 ? (
+                      <img src={resolveImageUrl(p.images[0])} alt={p.title} className="w-12 h-12 object-cover rounded-xl border border-gray-200 shadow-sm" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-300 text-xs">No img</div>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <p className="font-bold text-navy">{p.title}</p>
                     <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded font-bold uppercase tracking-widest">{p.category}</span>
@@ -237,18 +170,18 @@ const Projects = () => {
                   </TableCell>
                   <TableCell>
                     <FormControlLabel 
-                      control={<Switch size="small" checked={p.isPublished !== false} onChange={() => setConfirmToggle({ open: true, id: p._id, currentStatus: p.isPublished !== false })} />} 
+                      control={<Switch size="small" checked={p.isPublished !== false} onChange={(e) => { e.stopPropagation(); setConfirmToggle({ open: true, id: p._id, currentStatus: p.isPublished !== false }); }} onClick={(e) => e.stopPropagation()} />} 
                       label={<span className={`text-[10px] uppercase font-bold tracking-widest ${p.isPublished !== false ? 'text-green-600' : 'text-gray-300'}`}>{p.isPublished !== false ? "Live" : "Hidden"}</span>} 
                     />
                   </TableCell>
                   <TableCell align="right">
                     <Tooltip title="Edit Project">
-                      <IconButton size="small" onClick={() => handleOpenEdit(p)} className="hover:!bg-gray-100 mr-2">
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigate(`/admin/projects/edit/${p._id}`); }} className="hover:!bg-gray-100 mr-2">
                         <EditOutlinedIcon fontSize="small" className="text-gray-400" />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Delete">
-                      <IconButton size="small" onClick={() => setConfirmDelete({ open: true, id: p._id })} className="hover:!bg-red-50">
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); setConfirmDelete({ open: true, id: p._id }); }} className="hover:!bg-red-50">
                         <DeleteOutlineIcon fontSize="small" className="text-red-400" />
                       </IconButton>
                     </Tooltip>
@@ -260,83 +193,133 @@ const Projects = () => {
         </div>
       )}
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth PaperProps={{ className: "!rounded-3xl" }}>
-        <DialogTitle className="!font-bold !text-xl !pt-6">{editingId ? "Edit Project" : "New Portfolio Project"}</DialogTitle>
-        <DialogContent dividers className="space-y-6 !pt-6">
-          <div className="flex justify-between items-center bg-gray-50 p-4 rounded-2xl border border-gray-100">
-            <div>
-              <Typography variant="body2" fontWeight="700" className="text-navy tracking-tight">Active Visibility</Typography>
-              <Typography variant="caption" className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Public Site Status</Typography>
-            </div>
-            <Switch checked={formData.isPublished} onChange={e => setFormData({...formData, isPublished: e.target.checked})} />
-          </div>
-
-          <TextField 
-            label="Project Title" fullWidth value={formData.title} 
-            onChange={e => { setFormData({...formData, title: e.target.value}); if(errors.title) setErrors({...errors, title: null}); }} 
-            error={!!errors.title} helperText={errors.title}
-            variant="outlined" sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-          />
-
-          <div className="flex flex-col sm:flex-row gap-4">
-            <TextField 
-                label="Category" fullWidth value={formData.category} 
-                onChange={e => { setFormData({...formData, category: e.target.value}); if(errors.category) setErrors({...errors, category: null}); }} 
-                error={!!errors.category} helperText={errors.category}
-                variant="outlined" sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-            />
-            <TextField 
-                label="Total Cost (₹)" type="number" fullWidth value={formData.totalCost} 
-                onChange={e => { setFormData({...formData, totalCost: e.target.value}); if(errors.totalCost) setErrors({...errors, totalCost: null}); }} 
-                error={!!errors.totalCost} helperText={errors.totalCost}
-                variant="outlined" sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-            />
-          </div>
-
-          <TextField 
-            label="Timeline/Duration (e.g., 2 Months)" fullWidth value={formData.duration} 
-            onChange={e => setFormData({...formData, duration: e.target.value})} 
-            variant="outlined" sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-          />
-          <TextField 
-            label="Project Description" multiline rows={4} fullWidth value={formData.description} 
-            onChange={e => setFormData({...formData, description: e.target.value})} 
-            variant="outlined" sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-          />
-          
-          <Box>
-              <div className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all bg-gray-50/50 hover:bg-gray-50 ${errors.files ? 'border-red-300' : 'border-gray-200 hover:border-gold'} cursor-pointer`}>
-                <label className="cursor-pointer block w-full h-full">
-                  <input type="file" multiple onChange={(e) => { setFiles(e.target.files); if(errors.files) setErrors({...errors, files: null}); }} className="hidden" accept="image/*" />
-                  <div className="flex flex-col items-center gap-2">
-                    <span className="text-navy font-bold leading-tight">
-                      {files && files.length > 0 ? `${files.length} images selected` : editingId ? "Select new photos to override" : "Drop project photos here"}
-                    </span>
-                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Architecture / Interior Shots</span>
+      {/* ── Project Detail Dialog ── */}
+      {viewProject && (
+        <Dialog 
+          open={!!viewProject} 
+          onClose={() => setViewProject(null)} 
+          maxWidth="md" 
+          fullWidth 
+          PaperProps={{ className: "!rounded-3xl !overflow-hidden" }}
+        >
+          {/* Image Carousel */}
+          {viewProject.images && viewProject.images.length > 0 && (
+            <div className="relative bg-gray-900" style={{ height: 300 }}>
+              <img
+                src={resolveImageUrl(viewProject.images[carouselIndex])}
+                alt={viewProject.title}
+                className="w-full h-full object-cover opacity-90"
+              />
+              {/* Navigation arrows */}
+              {viewProject.images.length > 1 && (
+                <>
+                  <IconButton
+                    onClick={() => setCarouselIndex(i => (i - 1 + viewProject.images.length) % viewProject.images.length)}
+                    className="!absolute !left-3 !top-1/2 !-translate-y-1/2 !bg-black/40 !text-white hover:!bg-black/60"
+                    size="small"
+                  >
+                    <ArrowBackIosNewIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    onClick={() => setCarouselIndex(i => (i + 1) % viewProject.images.length)}
+                    className="!absolute !right-3 !top-1/2 !-translate-y-1/2 !bg-black/40 !text-white hover:!bg-black/60"
+                    size="small"
+                  >
+                    <ArrowForwardIosIcon fontSize="small" />
+                  </IconButton>
+                  {/* Dots */}
+                  <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+                    {viewProject.images.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setCarouselIndex(i)}
+                        className={`w-2 h-2 rounded-full transition-all ${i === carouselIndex ? 'bg-white scale-125' : 'bg-white/50'}`}
+                      />
+                    ))}
                   </div>
-                </label>
+                </>
+              )}
+              {/* Close button overlay */}
+              <IconButton
+                onClick={() => setViewProject(null)}
+                className="!absolute !top-3 !right-3 !bg-black/40 !text-white hover:!bg-black/60"
+                size="small"
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+              {/* Status badge */}
+              <div className="absolute top-3 left-3">
+                <span className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-widest ${
+                  viewProject.isPublished !== false 
+                    ? 'bg-green-500/90 text-white' 
+                    : 'bg-yellow-400/90 text-yellow-900'
+                }`}>
+                  {viewProject.isPublished !== false ? 'Live' : 'Hidden'}
+                </span>
               </div>
-              {errors.files && <Typography variant="caption" color="error" className="mt-1 block ml-2 font-medium">{errors.files}</Typography>}
-          </Box>
-
-          {previewUrls.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto py-2">
-              {previewUrls.map((url, i) => (
-                <img key={i} src={url} alt="" className="w-16 h-16 object-cover rounded-xl border border-gray-200 shadow-sm" />
-              ))}
             </div>
           )}
-        </DialogContent>
-        <DialogActions className="!px-8 !py-6">
-          <Button onClick={() => setOpen(false)} className="!text-gray-500 !normal-case !font-semibold">Cancel</Button>
-          <Button 
-            onClick={handleSave} variant="contained" disabled={saving} 
-            className="!bg-navy hover:!bg-navy-hover !text-white !rounded-xl !px-10 !py-2.5 !shadow-none !normal-case !font-semibold"
-          >
-            {saving ? "Saving..." : (editingId ? "Save Changes" : "Publish Project")}
-          </Button>
-        </DialogActions>
-      </Dialog>
+
+          <DialogContent className="!p-8">
+            {/* Title + category */}
+            <div className="mb-6">
+              <Typography variant="h5" fontWeight="800" className="text-navy tracking-tight leading-tight">
+                {viewProject.title}
+              </Typography>
+              <span className="inline-block mt-2 px-3 py-1 bg-gray-100 text-gray-500 text-[10px] font-bold uppercase tracking-widest rounded-md border border-gray-200">
+                {viewProject.category}
+              </span>
+            </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1">Estimated Cost</p>
+                <p className="text-xl font-black text-navy">₹{Number(viewProject.totalCost || 0).toLocaleString()}</p>
+              </div>
+              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1">Duration</p>
+                <p className="text-xl font-black text-navy">{viewProject.duration || '—'}</p>
+              </div>
+            </div>
+
+            {/* Description */}
+            {viewProject.description && (
+              <div className="mb-2">
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-2">Description</p>
+                <p className="text-gray-700 text-sm leading-relaxed">{viewProject.description}</p>
+              </div>
+            )}
+          </DialogContent>
+
+          <DialogActions className="!px-8 !pb-8 !pt-0 flex gap-2">
+            <Button 
+              onClick={() => setViewProject(null)} 
+              className="!text-gray-500 !normal-case !font-semibold"
+            >
+              Close
+            </Button>
+            <div className="flex-1" />
+            <Button
+              onClick={() => { setViewProject(null); setConfirmDelete({ open: true, id: viewProject._id }); }}
+              startIcon={<DeleteOutlineIcon />}
+              className="!text-red-500 !normal-case !font-semibold !border !border-red-200 !rounded-xl !px-5"
+              variant="outlined"
+              color="error"
+            >
+              Delete
+            </Button>
+            <Button
+              onClick={() => { const p = viewProject; setViewProject(null); navigate(`/admin/projects/edit/${p._id}`); }}
+              startIcon={<EditOutlinedIcon />}
+              variant="contained"
+              className="!bg-navy hover:!bg-navy-hover !text-white !rounded-xl !px-6 !shadow-none !normal-case !font-semibold"
+            >
+              Edit Project
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       <ConfirmDialog 
         open={confirmDelete.open} onClose={() => setConfirmDelete({ open: false, id: null })} onConfirm={handleDelete}

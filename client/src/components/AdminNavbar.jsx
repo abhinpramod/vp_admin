@@ -10,6 +10,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import WorkIcon from "@mui/icons-material/Work";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import AssignmentIcon from "@mui/icons-material/Assignment";
+import SettingsIcon from "@mui/icons-material/Settings";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import { NavLink, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -23,6 +24,7 @@ const menuItems = [
   { text: "Projects", icon: <WorkIcon />, path: "/admin/projects" },
   { text: "Gallery", icon: <CollectionsIcon />, path: "/admin/gallery" },
   { text: "Applications", icon: <AssignmentIcon />, path: "/admin/applications" },
+  { text: "Settings", icon: <SettingsIcon />, path: "/admin/settings" },
 ];
 
 const AdminNavbar = ({ open, setOpen }) => {
@@ -44,23 +46,6 @@ const AdminNavbar = ({ open, setOpen }) => {
 
   return (
     <>
-      <Drawer
-        open={open}
-        onClose={() => setOpen(false)}
-        className="md:hidden"
-        PaperProps={{
-          style: {
-            width: "272px",
-            borderRadius: "0 20px 20px 0",
-            background: "#0f1b2d",
-            color: "#fff",
-            boxShadow: "4px 0 24px rgba(0,0,0,0.25)",
-          },
-        }}
-      >
-        <SidebarContent close={() => setOpen(false)} handleLogout={() => setShowLogoutConfirm(true)} />
-      </Drawer>
-
       <div
         style={{
           width: "272px",

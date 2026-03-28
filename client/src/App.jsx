@@ -3,6 +3,8 @@ import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import Gallery from "./pages/Gallery";
 import Applications from "./pages/Applications";
+import Settings from "./pages/Settings";
+import ProjectForm from "./pages/ProjectForm";
 import Login from "./pages/Login";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -78,6 +80,22 @@ function App() {
             }
           />
           <Route
+            path="/admin/projects/new"
+            element={
+              <ProtectedRoute>
+                <ProjectForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/projects/edit/:id"
+            element={
+              <ProtectedRoute>
+                <ProjectForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/gallery"
             element={
               <ProtectedRoute>
@@ -90,6 +108,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Applications />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
               </ProtectedRoute>
             }
           />

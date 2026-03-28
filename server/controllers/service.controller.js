@@ -21,7 +21,7 @@ const createService = async (req, res) => {
     if (req.files) {
       for (let file of req.files) {
         const result = await uploadBuffer(file.buffer);
-        images.push(result.public_id);
+        images.push(result.secure_url);
       }
     }
 
@@ -66,7 +66,7 @@ const updateService = async (req, res) => {
     images = [];
     for (let file of req.files) {
       const result = await uploadBuffer(file.buffer);
-      images.push(result.public_id);
+      images.push(result.secure_url);
     }
   }
 
